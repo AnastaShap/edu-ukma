@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
             assertEquals(Money.ofDollars(expected), result);
         }
 
+        // тест на некоректний відсоток (-10, 120)
         @ParameterizedTest
         @ValueSource(doubles = {-10.0, 120.0})
         void percentDiscountRejectsInvalidValues(double percent) {
