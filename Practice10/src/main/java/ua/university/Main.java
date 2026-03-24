@@ -1,68 +1,121 @@
 package ua.university;
 
-import task3.Ticket;
-import task3.TicketComparators;
-import task4.CheckoutRequest;
-import task4.Price;
-import task4.UserDto;
-import ua.university.task1.Car;
-import ua.university.task1.Library;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Month;
+import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     static void main() {
+        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
+        // to see how IntelliJ IDEA suggests fixing it.
+        Event e1 = new Event(
+                "Java Basics",
+                LocalDateTime.of(2026, 3, 25, 9, 0),
+                60,
+                ZoneId.of("Europe/Kyiv"),
+                "Backend"
+        );
 
-        System.out.println("--- Task 1 ---");
+        Event e2 = new Event(
+                "Lambda Deep Dive",
+                LocalDateTime.of(2026, 3, 25, 11, 0),
+                90,
+                ZoneId.of("Europe/Kyiv"),
+                "Advanced"
+        );
 
-        Car myCar = new Car("Toyota Camry");
-        Car.Engine myEngine = myCar.spec();
-        System.out.println("Авто: " + myCar.getModel() + ", Потужність: " + myEngine.getHorsepower());
+        Event e3 = new Event(
+                "System Design",
+                LocalDateTime.of(2026, 3, 25, 14, 0),
+                120,
+                ZoneId.of("Europe/London"),
+                "Architecture"
+        );
 
+        Event e4 = new Event(
+                "Networking",
+                LocalDateTime.of(2026, 3, 25, 16, 0),
+                45,
+                ZoneId.of("Europe/Kyiv"),
+                "Infra"
+        );
 
-        Library myLibrary = new Library("Центральна міська бібліотека");
-        // Створення об*єкта внутрішнього класу через об*єкт зовнішнього
-        Library.Book myBook = myLibrary.new Book("1984", "Джордж Оруелл");
-        System.out.print(myBook.bookLabel());
+        System.out.println(e1.label());
+        System.out.println(e2.label());
 
-        System.out.println("\n--- Task 2 ---");
+        System.out.println("End of e1: " + e1.end());
+        System.out.println("End of e3: " + e3.end());
 
-        TicketSystem system = new TicketSystem();
+        // ----------------------------------
 
-       String ticketId = system.buildTicketId("VIP");
-        System.out.println("Згенерований ID: " + ticketId);
-        Runnable task = system.runOnce();
-        task.run();
+        System.out.println("\n--- TASK2 ---");
 
-        System.out.println("\n--- Task 3 ---");
+        // PREDICATES
+        Predicate<Event> morning = e ->
+                e.getStart().getHour() < 12;
 
+        Predicate<Event> longEvent = e -> e.getDurationMinutes() > 60;
+        Predicate<Event> kyivZone = e ->
+                e.getZone().getId().equals("Europe/Kyiv");
 
-        List<Ticket> tickets = new ArrayList<>();
-        tickets.add(new Ticket(3, LocalDate.of(2024, Month.JUNE, 23)));
-        tickets.add(new Ticket(1, LocalDate.of(2025, Month.APRIL, 7)));
-        for (Ticket ticket : tickets) {
-            System.out.println(ticket.getPriority());
-        }
-      //  Comparator<Ticket> lambdaComparator = TicketComparators.LAMBDA_COMPARATOR;
-       // System.out.println("lambda" + lambdaComparator);
+        Predicate<Event> complexFilter =  morning.and(longEvent).and(kyivZone);
 
-        TicketComparators.sortTickets(tickets, "priority");
-        for (Ticket ticket : tickets) {
-            System.out.println("до сортування за пріоритетом" + ticket.getPriority());
-        }
+        Predicate<Event> notInfra = e -> !e.getTrack().equals("Infra");
 
-        TicketComparators.sortTickets(tickets, "createdAt");
-        for (Ticket ticket : tickets) {
-            System.out.println("після сортування за датою : " + ticket.createdDate);
-        }
+        Predicate<Event> filter = morning.and(notInfra);
+        List<Event> events = List.of(e1, e2, e3, e4);
 
+        // filter
+        List<Event> morningEvents = EventLab.pick(events, morning);
+
+        // labels
+        List<String> labels = EventLab.labels(events, Event::label);
+
+        // notify
+        EventLab.notifyAll(events, e ->
+                System.out.println("Notify: " + e.label())
+        );
+
+            // create
+        Event newEvent = EventLab.create(() ->
+                new Event(
+                        "New Event",
+                        e1.getStart(),
+                        30,
+                        e1.getZone(),
+                        "Test"
+                )
+        );
+
+        // conflicts
+        List<String> conflicts = EventLab.findConflicts(events);
+        conflicts.forEach(System.out::println);
+
+        System.out.println("\n---------------------");
+        System.out.println("\n--- TASK3 ---");
+
+        List<Event> events2 = new ArrayList<>(List.of(e1, e2, e3, e4));
+
+        LambdaRefactorLab.sortAnonymous(events2);
+        events.forEach(e -> System.out.println(e.label()));
+
+        LambdaRefactorLab.sortLambda(events2);
+        events.forEach(e -> System.out.println(e.label()));
+
+        LambdaRefactorLab.sortMethodRef(events2);
+        events.forEach(e -> System.out.println(e.label()));
+
+        System.out.println("\n-------------------");
+        System.out.println("\n--- TASK4 ---");
+
+        System.out.println("Instant e1: " + DateTimeLab.toInstant(e1));
+        System.out.println("Minutes between e1 and e2: " + DateTimeLab.minutesBetween(e1, e2));
+
+        System.out.println("e1 in London: " + DateTimeLab.startInZone(e1, "Europe/London"));
 
     }
 }
