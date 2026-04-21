@@ -1,0 +1,177 @@
+import java.lang.reflect.*;
+
+public class ClassInfoPrinter {
+
+    public static void print(Class<?> clazz) {
+        System.out.println("Class name: " + clazz.getName());
+
+        Class<?> superClass = clazz.getSuperclass();
+        System.out.println("Superclass: " + (superClass != null ? superClass.getName() : "None"));
+
+        Class<?>[] interfaces = clazz.getInterfaces();
+        System.out.println("Interfaces:");
+        for (Class<?> i : interfaces) {
+            System.out.println(" - " + i.getName());
+        }
+
+        Field[] fields = clazz.getDeclaredFields();
+        System.out.println("Fields:");
+        for (Field f : fields) {
+            System.out.println(" - " + f.getType().getSimpleName() + " " + f.getName());
+        }
+
+        Method[] methods = clazz.getDeclaredMethods();
+        System.out.println("Methods:");
+        for (Method m : methods) {
+            System.out.println(" - " + m.getReturnType().getSimpleName() + " " + m.getName());
+        }
+    }
+}
+
+Ти вчишся отримувати метадані класу в runtime, а не на етапі компіляції.
+Це основа для:
+    фреймворків (Spring, Hibernate)
+    серіалізації
+    dependency injection
+
+ Завдання 2: Фабрика сервісів через reflection
+
+Що відбувається
+
+Ти створюєш об'єкти не через new, а через рядок з ім’ям класу.
+
+ Інтерфейс і сервіси
+public interface PaymentService {
+    void pay(double amount);
+}
+public class CardPaymentService implements PaymentService {
+    public void pay(double amount) {
+        System.out.println("Paid " + amount + " by card");
+    }
+}
+public class CashPaymentService implements PaymentService {
+    public void pay(double amount) {
+        System.out.println("Paid " + amount + " in cash");
+    }
+}
+ Фабрика
+public class ServiceFactory {
+
+    public static PaymentService create(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+
+            return (PaymentService) instance;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create service: " + className, e);
+        }
+    }
+}
+від’єднуєш код від конкретних класів
+даєш можливість підміняти реалізації
+
+Сьогодні це CardPaymentService, завтра якийсь CryptoQuantumPaymentService 🪙
+
+ Завдання 3: Annotation-runner
+
+Оце вже цікавіше. Тут ти будуєш свою маленьку execution-систему.
+
+ Анотація
+import java.lang.annotation.*;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Step {
+    int order();
+}
+ Власний виняток
+public class StepExecutionException extends RuntimeException {
+    public StepExecutionException(String message) {
+        super(message);
+    }
+
+    public StepExecutionException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+ Runner
+import java.lang.reflect.Method;
+import java.util.*;
+
+public class StepRunner {
+
+    public static void run(Object target) {
+        Method[] methods = target.getClass().getDeclaredMethods();
+
+        List<Method> steps = new ArrayList<>();
+
+        for (Method m : methods) {
+            if (m.isAnnotationPresent(Step.class)) {
+
+                // перевірка сигнатури
+                if (m.getParameterCount() != 0 || m.getReturnType() != void.class) {
+                    throw new StepExecutionException(
+                        "Invalid step method: " + m.getName()
+                    );
+                }
+
+                steps.add(m);
+            }
+        }
+
+        // сортування по order
+        steps.sort(Comparator.comparingInt(m -> m.getAnnotation(Step.class).order()));
+
+        // виконання
+        for (Method step : steps) {
+            try {
+                step.trySetAccessible(); // або setAccessible(true)
+                step.invoke(target);
+
+            } catch (Exception e) {
+                throw new StepExecutionException(
+                    "Error executing step: " + step.getName(), e
+                );
+            }
+        }
+    }
+}
+Приклад класу
+public class SetupFlow {
+
+    @Step(order = 2)
+    private void initDatabase() {
+        System.out.println("Database initialized");
+    }
+
+    @Step(order = 1)
+    private void loadConfig() {
+        System.out.println("Config loaded");
+    }
+}
+ Суть
+
+
+свою mini-версію тестового фреймворку (як JUnit)
+керування виконанням через анотації
+
+Reflection тут виступає як “режисер”, а анотації як “сценарій”
+
+ Як це виглядає в PracticeMain
+public class PracticeMain {
+
+    public static void main(String[] args) {
+
+        // Task 1
+        ClassInfoPrinter.print(Book.class);
+
+        // Task 2
+        PaymentService service = ServiceFactory.create("CardPaymentService");
+        service.pay(100);
+
+        // Task 3
+        StepRunner.run(new SetupFlow());
+    }
+}
